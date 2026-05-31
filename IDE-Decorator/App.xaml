@@ -1,0 +1,9 @@
+﻿<Application x:Class="IDE_Decorator.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:IDE_Decorator"
+             StartupUri="IDE.xaml">
+    <Application.Resources>
+         
+    </Application.Resources>
+</Application>
