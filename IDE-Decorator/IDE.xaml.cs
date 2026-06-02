@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Documents;
 
 namespace IDE_Decorator
 {
@@ -69,6 +70,26 @@ namespace IDE_Decorator
             ;
 
             
+        }
+
+        private string GetEditorText()
+        {
+            var range = new TextRange(txtEditor.Document.ContentStart, txtEditor.Document.ContentEnd);
+            return range.Text;
+        }
+
+        private void SetEditorText(string text)
+        {
+            txtEditor.Document.Blocks.Clear();
+            txtEditor.Document.Blocks.Add(new Paragraph(new Run(text)));
+            txtEditor.CaretPosition = txtEditor.Document.ContentEnd;
+        }
+
+        private int GetEditorLineCount()
+        {
+            var text = GetEditorText();
+            if (string.IsNullOrEmpty(text)) return 1;
+            return text.Split(new[] { '\n' }, StringSplitOptions.None).Length;
         }
 
         private void btnTabProject_Click(object sender, RoutedEventArgs e) => SwitchTab(ActiveTab.Project);
@@ -311,11 +332,11 @@ namespace IDE_Decorator
                 {
                     string[] lineas = contenidoDisco.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
                     string contenidoLimpioParaUsuario = string.Join(Environment.NewLine, lineas.Skip(1));
-                    txtEditor.Text = contenidoLimpioParaUsuario;
+                    SetEditorText(contenidoLimpioParaUsuario);
                 }
                 else
                 {
-                    txtEditor.Text = contenidoDisco;
+                    SetEditorText(contenidoDisco);
                 }
 
                 ActualizarNumerosLinea();
@@ -337,8 +358,8 @@ namespace IDE_Decorator
                 return;
             }
 
-            string contenidoEditor = txtEditor.Text;
-            if (string.IsNullOrEmpty(contenidoEditor) || contenidoEditor == "Write your code here...")
+            string contenidoEditor = GetEditorText();
+            if (string.IsNullOrEmpty(contenidoEditor) || contenidoEditor == "Puedes escribir código de prueba aquí...")
             {
                 MessageBox.Show("El editor está vacío. No hay contenido para firmar.", "Operación Inválida", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
@@ -377,14 +398,14 @@ namespace IDE_Decorator
         }
         private void btnHighlightSyntax_Click(object sender, RoutedEventArgs e)
         {
-            string content = txtEditor.Text;
+            string content = GetEditorText();
             string fileName = string.IsNullOrEmpty(currentFilePath) ? "script.py" : Path.GetFileName(currentFilePath);
-            if (string.IsNullOrWhiteSpace(content) || content == "Write your code here...") return;
+            if (string.IsNullOrWhiteSpace(content) || content == "Puedes escribir código de prueba aquí...") return;
 
             IScript script = new Script(content, fileName);
             var formatted = new ScriptFormatted(script);
 
-            txtEditor.Text = formatted.GetContent();
+            SetEditorText(formatted.GetContent());
             ActualizarNumerosLinea();
             AppendToConsole("✔ Script formateado.", Brushes.LightGreen);
         }
@@ -558,9 +579,8 @@ namespace IDE_Decorator
 
         private void txtEditor_Click(object sender, RoutedEventArgs e)
         {
-            if (txtEditor.Text == "Write your code here..." ||
-                txtEditor.Text == "Puedes escribir código de prueba aquí..")
-                txtEditor.Text = "";
+            if (GetEditorText() == "Puedes escribir código de prueba aquí...")
+                SetEditorText("");
             e.Handled = true;
         }
 
@@ -588,7 +608,7 @@ namespace IDE_Decorator
                 lblProjectName.Content = this.projectName;
                 RefreshTreeView();
                 currentFilePath = null;
-                txtEditor.Text = "Write your code here...";
+                SetEditorText("Puedes escribir código de prueba aquí...");
                 txtLineNumbers.Text = "1";
             }
             catch (Exception ex) { MessageBox.Show("Error loading project: " + ex.Message); }
@@ -608,11 +628,11 @@ namespace IDE_Decorator
                     {
                         string[] lineas = contenidoDisco.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
                         string contenidoLimpioParaUsuario = string.Join(Environment.NewLine, lineas.Skip(1));
-                        txtEditor.Text = contenidoLimpioParaUsuario;
+                        SetEditorText(contenidoLimpioParaUsuario);
                     }
                     else
                     {
-                        txtEditor.Text = contenidoDisco;
+                        SetEditorText(contenidoDisco);
                     }
 
                     ActualizarNumerosLinea();
@@ -966,7 +986,7 @@ namespace IDE_Decorator
 
         private void ActualizarNumerosLinea()
         {
-            int count = txtEditor.LineCount;
+            int count = GetEditorLineCount();
             var sb = new StringBuilder();
             for (int i = 1; i <= count; i++) sb.AppendLine(i.ToString());
             txtLineNumbers.Text = sb.ToString();
@@ -1010,8 +1030,7 @@ namespace IDE_Decorator
         private void txtEditor_TextChanged(object sender, TextChangedEventArgs e)
         {
             ActualizarNumerosLinea();
-            isModified = txtEditor.Text != "Write your code here..." &&
-                         txtEditor.Text != "Puedes escribir código de prueba aquí..";
+            isModified = GetEditorText() != "Puedes escribir código de prueba aquí..";
             if (txtEditor.IsFocused && !string.IsNullOrEmpty(currentFilePath) && isModified)
             {
                 lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(currentFilePath)} - Cambios sin guardar*";

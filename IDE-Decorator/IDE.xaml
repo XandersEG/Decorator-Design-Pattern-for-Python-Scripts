@@ -149,7 +149,7 @@
 
             <TextBox Grid.Row="0" Grid.Column="3" x:Name="txtLineNumbers" Background="#FF3C3C3C" Foreground="White" BorderThickness="0" IsReadOnly="True" TextAlignment="Center" FontFamily="Consolas" FontSize="14" Padding="0,10,0,0" VerticalScrollBarVisibility="Hidden"/>
 
-            <TextBox Grid.Row="0" Grid.Column="4" x:Name="txtEditor" Background="#FF8E8E8E" Foreground="White" BorderThickness="0" AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas" FontSize="14" Padding="10,10,0,0" VerticalScrollBarVisibility="Auto" Text="Write your code here..." GotFocus="txtEditor_Click" DataObject.Pasting="txtEditor_Pasting" DataObject.Copying="txtEditor_Copying" TextChanged="txtEditor_TextChanged"/>
+            <RichTextBox Grid.Row="0" Grid.Column="4" x:Name="txtEditor" Background="#FF8E8E8E" Foreground="White" BorderThickness="0" AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas" FontSize="14" Padding="10,10,0,0" VerticalScrollBarVisibility="Auto" GotFocus="txtEditor_Click" DataObject.Pasting="txtEditor_Pasting" DataObject.Copying="txtEditor_Copying" TextChanged="txtEditor_TextChanged"/>
 
             <GridSplitter x:Name="txtConsoleSeparator" Grid.Row="1" Grid.ColumnSpan="5" Height="5" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="Black"/>
 
