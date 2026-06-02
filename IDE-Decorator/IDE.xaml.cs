@@ -55,7 +55,6 @@ namespace IDE_Decorator
                 DirectoryInfo di = Directory.CreateDirectory(hiddenPersistencePath);
                 di.Attributes |= FileAttributes.Hidden;
             }
-
             this.currentProjectPath = hiddenPersistencePath;
             LoadProject(hiddenPersistencePath);
             Console.WriteLine(hiddenPersistencePath);
@@ -775,12 +774,12 @@ namespace IDE_Decorator
                 {
                     string contenidoActualEnDisco = File.Exists(currentFilePath) ? File.ReadAllText(currentFilePath, Encoding.UTF8) : "";
 
-                    if (IDE_Decorator.Modelo.ScriptSigned.IsAlreadySigned(contenidoActualEnDisco))
-                    {
-                        string hashExistente = contenidoActualEnDisco.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None)[0];
-                        string contenidoConFirmaPreservada = hashExistente + Environment.NewLine + txtEditor.Text;
-                        File.WriteAllText(currentFilePath, contenidoConFirmaPreservada, Encoding.UTF8);
-                    }
+                    // Always sign on save
+                    string contenidoParaFirmar = GetEditorText();
+                    string newHash = IDE_Decorator.Modelo.ScriptSigned.ComputeSha256(contenidoParaFirmar);
+                    string toWrite = "#" + newHash + Environment.NewLine + contenidoParaFirmar;
+                    File.WriteAllText(currentFilePath, toWrite, Encoding.UTF8);
+
                     else
                     {
                         File.WriteAllText(currentFilePath, txtEditor.Text);
