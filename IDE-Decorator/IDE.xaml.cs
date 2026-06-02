@@ -1,14 +1,15 @@
-﻿using System;
+﻿using IDE_Decorator.Modelo;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using IDE_Decorator.Modelo;
 
 namespace IDE_Decorator
 {
@@ -24,16 +25,16 @@ namespace IDE_Decorator
 
         private string sysCurrentPath;
         private bool sysFilterPyOnly = true;
-
+        private string hiddenPersistencePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".local_scripts");
         private enum ActiveTab { Project, System, Tasks }
         private ActiveTab _activeTab = ActiveTab.Project;
 
         public IDE()
         {
             InitializeComponent();
-
             this.running = false;
             this.projectName = "Proyecto Python Autónomo";
+
 
             txtEditor.AddHandler(ScrollViewer.ScrollChangedEvent,
                 new ScrollChangedEventHandler(txtEditor_ScrollChanged));
@@ -48,27 +49,27 @@ namespace IDE_Decorator
             lblProjectName.Content = this.projectName;
             this.Topmost = true;
 
-            var enunciados = new List<Assignment>
+            string hiddenPersistencePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".local_scripts");
+            if (!Directory.Exists(hiddenPersistencePath))
             {
-                new Assignment { Id = 101, Title = "Tarea 1",
-                    Deadline = DateTime.Now.AddDays(7),
-                    Description = "Desarrolle un script básico en Python para familiarizarse con el entorno." },
-                new Assignment { Id = 33, Title = "Tarea 2",
-                    Deadline = DateTime.Now.AddDays(14),
-                    Description = "Serie Fibonacci:\nCree un programa que calcule la serie de Fibonacci utilizando recursividad o ciclos." }
-            };
-            icTareas.ItemsSource = enunciados;
+                DirectoryInfo di = Directory.CreateDirectory(hiddenPersistencePath);
+                di.Attributes |= FileAttributes.Hidden;
+            }
 
-            string defaultRoot = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                "IDEPythonProjects");
-            if (!Directory.Exists(defaultRoot)) Directory.CreateDirectory(defaultRoot);
-            LoadProject(defaultRoot);
+            this.currentProjectPath = hiddenPersistencePath;
+            LoadProject(hiddenPersistencePath);
+            Console.WriteLine(hiddenPersistencePath);
 
             sysCurrentPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             if (string.IsNullOrEmpty(sysCurrentPath) || !Directory.Exists(sysCurrentPath))
                 sysCurrentPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             LoadSystemTree(sysCurrentPath);
+
+
+
+            ;
+
+            
         }
 
         private void btnTabProject_Click(object sender, RoutedEventArgs e) => SwitchTab(ActiveTab.Project);
@@ -115,6 +116,16 @@ namespace IDE_Decorator
                 tvSystem.Items.Add(root);
                 root.IsExpanded = true;
             }
+        }
+
+        private void InicializarPersistenciaOculta()
+        {
+            if (!Directory.Exists(hiddenPersistencePath))
+            {
+                DirectoryInfo di = Directory.CreateDirectory(hiddenPersistencePath);
+                di.Attributes |= FileAttributes.Hidden;
+            }
+            currentProjectPath = hiddenPersistencePath;
         }
 
         private TreeViewItem BuildSystemNode(string path, bool isRoot = false)
@@ -295,48 +306,76 @@ namespace IDE_Decorator
             try
             {
                 currentFilePath = path;
-                txtEditor.Text = File.ReadAllText(path);
+                string contenidoDisco = File.ReadAllText(path, Encoding.UTF8);
+
+                if (IDE_Decorator.Modelo.ScriptSigned.IsAlreadySigned(contenidoDisco))
+                {
+                    string[] lineas = contenidoDisco.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+                    string contenidoLimpioParaUsuario = string.Join(Environment.NewLine, lineas.Skip(1));
+                    txtEditor.Text = contenidoLimpioParaUsuario;
+                }
+                else
+                {
+                    txtEditor.Text = contenidoDisco;
+                }
+
                 ActualizarNumerosLinea();
                 lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(path)}";
                 isModified = false;
                 txtEditor.Focus();
             }
-            catch (Exception ex) { MessageBox.Show("Error al abrir el archivo: " + ex.Message); }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al abrir el archivo: " + ex.Message);
+            }
         }
 
         private void btnSignScript_Click(object sender, RoutedEventArgs e)
         {
-            string content = txtEditor.Text;
-            string fileName = string.IsNullOrEmpty(currentFilePath)
-                ? "sin_nombre.py" : Path.GetFileName(currentFilePath);
-
-            if (string.IsNullOrWhiteSpace(content) || content == "Write your code here...")
+            if (string.IsNullOrEmpty(currentFilePath) || !File.Exists(currentFilePath))
             {
-                MessageBox.Show("El editor está vacío. Escribe o abre un script primero.",
-                                "Nada que firmar", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Por favor, guarde o abra un archivo válido antes de firmar.", "Archivo Requerido", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            IScript script = new Script(content, fileName);
-            var signed = new ScriptSigned(script);
-
-            var result = MessageBox.Show(
-                $"Se firmará el script con SHA-256.\n\n" +
-                $"Archivo : {fileName}\n" +
-                $"Hash    : {signed.Hash}\n\n" +
-                $"¿Desea insertar la firma como comentario al inicio del archivo?",
-                "Firma SHA-256", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-            if (result == MessageBoxResult.Yes)
+            string contenidoEditor = txtEditor.Text;
+            if (string.IsNullOrEmpty(contenidoEditor) || contenidoEditor == "Write your code here...")
             {
-                txtEditor.Text = signed.GetContent();
-                ActualizarNumerosLinea();
-                isModified = true;
-                if (!string.IsNullOrEmpty(currentFilePath)) SaveCurrentFile();
-                AppendToConsole($"✔ Script firmado con SHA-256\n   Hash: {signed.Hash}", Brushes.Cyan);
+                MessageBox.Show("El editor está vacío. No hay contenido para firmar.", "Operación Inválida", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            string contenidoActualEnDisco = File.ReadAllText(currentFilePath, Encoding.UTF8);
+            if (IDE_Decorator.Modelo.ScriptSigned.IsAlreadySigned(contenidoActualEnDisco))
+            {
+                MessageBox.Show("El script ya se encuentra firmado electrónicamente.\nNo se permite acumular múltiples firmas sobre el mismo archivo.", "Firma Denegada", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            string nombreArchivo = Path.GetFileName(currentFilePath);
+
+            IScript scriptOriginal = new Script(contenidoEditor, nombreArchivo);
+            ScriptSigned scriptFirmado = new ScriptSigned(scriptOriginal);
+
+            try
+            {
+                File.WriteAllText(currentFilePath, scriptFirmado.GetContent(), Encoding.UTF8);
+
+                scriptFirmado.RegistrarEnCsv(nombreArchivo);
+
+                isModified = false;
+                lblProjectName.Content = $"{this.projectName} - {nombreArchivo}";
+
+                LoadProject(currentProjectPath);
+
+
+                MessageBox.Show($"¡Archivo '{nombreArchivo}' firmado con éxito!\nFirma guardada de manera directa en el archivo original y registrada en firmas.csv.", "Proceso Exitoso", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ocurrió un error al persistir la firma del script: {ex.Message}", "Error de Persistencia", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
         private void btnHighlightSyntax_Click(object sender, RoutedEventArgs e)
         {
             string content = txtEditor.Text;
@@ -563,44 +602,48 @@ namespace IDE_Decorator
                 try
                 {
                     currentFilePath = path;
-                    txtEditor.Text = File.ReadAllText(path);
+
+                    string contenidoDisco = File.ReadAllText(path, Encoding.UTF8);
+
+                    if (IDE_Decorator.Modelo.ScriptSigned.IsAlreadySigned(contenidoDisco))
+                    {
+                        string[] lineas = contenidoDisco.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+                        string contenidoLimpioParaUsuario = string.Join(Environment.NewLine, lineas.Skip(1));
+                        txtEditor.Text = contenidoLimpioParaUsuario;
+                    }
+                    else
+                    {
+                        txtEditor.Text = contenidoDisco;
+                    }
+
                     ActualizarNumerosLinea();
                     lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(path)}";
                     isModified = false;
                 }
-                catch (Exception ex) { MessageBox.Show("Error opening file: " + ex.Message); }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error opening file: " + ex.Message);
+                }
             }
         }
-
         private void BuildTree(TreeViewItem parent, string folder)
         {
             try
             {
                 foreach (var dir in Directory.GetDirectories(folder))
                 {
-                    var dirNode = new TreeViewItem
-                    {
-                        Header = "📁 " + Path.GetFileName(dir),
-                        Tag = dir,
-                        Foreground = new SolidColorBrush(Color.FromRgb(135, 206, 235))
-                    };
+                    var dirNode = new TreeViewItem { Header = "📁 " + Path.GetFileName(dir), Tag = dir, Foreground = new SolidColorBrush(Color.FromRgb(135, 206, 235)) };
                     parent.Items.Add(dirNode);
                     BuildTree(dirNode, dir);
                 }
                 foreach (var file in Directory.GetFiles(folder, "*.py"))
                 {
-                    var fileNode = new TreeViewItem
-                    {
-                        Header = "🐍 " + Path.GetFileName(file),
-                        Tag = file,
-                        Foreground = new SolidColorBrush(Color.FromRgb(243, 221, 78))
-                    };
+                    var fileNode = new TreeViewItem { Header = "🐍 " + Path.GetFileName(file), Tag = file, Foreground = new SolidColorBrush(Color.FromRgb(243, 221, 78)) };
                     parent.Items.Add(fileNode);
                 }
             }
             catch { }
         }
-
         private Point _startPoint;
 
         private void tvFiles_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -730,29 +773,34 @@ namespace IDE_Decorator
             {
                 if (!string.IsNullOrEmpty(currentFilePath))
                 {
-                    File.WriteAllText(currentFilePath, txtEditor.Text);
+                    string contenidoActualEnDisco = File.Exists(currentFilePath) ? File.ReadAllText(currentFilePath, Encoding.UTF8) : "";
+
+                    if (IDE_Decorator.Modelo.ScriptSigned.IsAlreadySigned(contenidoActualEnDisco))
+                    {
+                        string hashExistente = contenidoActualEnDisco.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None)[0];
+                        string contenidoConFirmaPreservada = hashExistente + Environment.NewLine + txtEditor.Text;
+                        File.WriteAllText(currentFilePath, contenidoConFirmaPreservada, Encoding.UTF8);
+                    }
+                    else
+                    {
+                        File.WriteAllText(currentFilePath, txtEditor.Text);
+                    }
+
                     if (string.IsNullOrEmpty(currentProjectPath))
                         currentProjectPath = Path.GetDirectoryName(currentFilePath);
+
                     lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(currentFilePath)}";
                     SetSelectedNodeItalic(false);
                     isModified = false;
                 }
                 else if (!string.IsNullOrEmpty(currentProjectPath))
                 {
-                    int i = 1; string newPath;
-                    do { newPath = Path.Combine(currentProjectPath, $"untitled_{i}.py"); i++; }
-                    while (File.Exists(newPath));
-                    File.WriteAllText(newPath, txtEditor.Text);
-                    RefreshTreeView();
-                    if (tvFiles.Items.Count > 0 && tvFiles.Items[0] is TreeViewItem root)
-                        FindAndSelectNode(root, newPath);
-                    lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(newPath)}";
-                    isModified = false;
                 }
-                else
-                    MessageBox.Show("No hay ruta de proyecto disponible.");
             }
-            catch (Exception ex) { MessageBox.Show("Error saving file: " + ex.Message); }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error saving file: " + ex.Message);
+            }
         }
 
         private void btnNewFile_Click(object sender, RoutedEventArgs e) => CreateNewFileOrFolder(true);
@@ -874,7 +922,7 @@ namespace IDE_Decorator
                     this.running = false;
                     Dispatcher.Invoke(() => {
                         spConsoleInput.Visibility = Visibility.Collapsed;
-                        this.Topmost = true;
+                        this.Topmost = false;
                         lblProjectName.Content = this.projectName;
                         btnRun.Visibility = Visibility.Visible;
                         btnStop.Visibility = Visibility.Collapsed;
@@ -972,36 +1020,8 @@ namespace IDE_Decorator
             }
         }
 
-        private void BtnCerrarEnunciado_Click(object sender, RoutedEventArgs e)
-        {
-            pnlEnunciado.Visibility = Visibility.Collapsed;
-            homeWorklist.Visibility = Visibility.Visible;
-        }
 
-        private void BtnVerEnunciado_Click(object sender, RoutedEventArgs e)
-        {
-            var tarea = (sender as Button)?.Tag as Assignment;
-            if (tarea != null)
-            {
-                mostrarEnunciado(tarea);
-                homeWorklist.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                homeWorklist.Visibility = Visibility.Collapsed;
-                pnlEnunciado.Visibility = Visibility.Visible;
-            }
-        }
 
-        private void mostrarEnunciado(Assignment tarea)
-        {
-            if (tarea == null) { pnlEnunciado.Visibility = Visibility.Collapsed; return; }
-            lblEnunciadoTitulo.Text = string.IsNullOrWhiteSpace(tarea.Title) ? "(Sin título)" : tarea.Title;
-            lblEnunciadoDeadline.Text = tarea.Deadline != DateTime.MinValue
-                                        ? "Entrega: " + tarea.Deadline.ToString("g") : string.Empty;
-            lblEnunciadoDescripcion.Text = string.IsNullOrWhiteSpace(tarea.Description) ? "(Sin descripción)" : tarea.Description;
-            pnlEnunciado.Visibility = Visibility.Visible;
-        }
 
         private void btnTerminal_Click(object sender, RoutedEventArgs e) => openPythonTerminal();
     }

@@ -97,44 +97,37 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Border x:Name="spFiles" Grid.Row="0" Grid.Column="0" Background="#1E1E2E" Padding="0" Grid.ColumnSpan="2">
+            <Border x:Name="spFiles" Grid.Row="0" Grid.Column="0" Background="#2E2E2E" Padding="8" Grid.ColumnSpan="2">
                 <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="36"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Background="#252540" VerticalAlignment="Stretch">
-                        <Button x:Name="btnTabProject" Content="📂 Proyecto" Height="36" Padding="10,0"
-                                Background="#3F4185" Foreground="White" BorderThickness="0" FontWeight="Bold"
-                                FontSize="12" Click="btnTabProject_Click" Cursor="Hand"/>
-                        <Button x:Name="btnTabSystem" Content="💾 Mis archivos" Height="36" Padding="10,0"
-                                Background="Transparent" Foreground="#AAAAAA" BorderThickness="0"
-                                FontSize="12" Click="btnTabSystem_Click" Cursor="Hand"/>
-                        <Button x:Name="btnTabTasks" Content="📋 Tareas" Height="36" Padding="10,0"
-                                Background="Transparent" Foreground="#AAAAAA" BorderThickness="0"
-                                FontSize="12" Click="btnTabTasks_Click" Cursor="Hand"/>
+                    <StackPanel Visibility="Collapsed">
+                        <Button x:Name="btnTabProject" Click="btnTabProject_Click"/>
+                        <Button x:Name="btnTabSystem" Click="btnTabSystem_Click"/>
+                        <Button x:Name="btnTabTasks" Click="btnTabTasks_Click"/>
+                        <Grid x:Name="tabProject"/>
+                        <Grid x:Name="tabTasks"/>
+                        <Grid x:Name="tabSystem">
+                            <Button x:Name="btnSysUp" Click="btnSysUp_Click"/>
+                            <TextBox x:Name="txtSysPath" KeyDown="txtSysPath_KeyDown"/>
+                            <Button x:Name="btnSysGo" Click="btnSysGo_Click"/>
+                            <ComboBox x:Name="cmbSysFilter" SelectionChanged="cmbSysFilter_SelectionChanged"/>
+                            <Button x:Name="btnSysRefresh" Click="btnSysRefresh_Click"/>
+                            <Button x:Name="btnOpenInProject" Click="btnOpenInProject_Click"/>
+                            <TreeView x:Name="tvSystem" SelectedItemChanged="tvSystem_SelectedItemChanged" MouseDoubleClick="tvSystem_MouseDoubleClick"/>
+                        </Grid>
                     </StackPanel>
 
-                    <Grid x:Name="tabProject" Grid.Row="1">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="8,6,8,4">
-                            <Button x:Name="btnNewFile" Content="+ Archivo" Width="80" Height="24"
-                                    Click="btnNewFile_Click" Margin="0,0,5,0"
-                                    Style="{StaticResource RoundedButton}" FontSize="11"/>
-                            <Button x:Name="btnNewFolder" Content="+ Carpeta" Width="80" Height="24"
-                                    Click="btnNewFolder_Click" Margin="0,0,5,0"
-                                    Style="{StaticResource RoundedButton}" FontSize="11"/>
-                            <Button x:Name="btnDelete" Content="🗑" Width="32" Height="24"
-                                    Click="btnDelete_Click"
-                                    Style="{StaticResource SmallRoundDanger}" FontSize="13"/>
+                    <StackPanel>
+                        <TextBlock Text="Archivos" Foreground="White" FontWeight="Bold" Margin="0,0,0,8"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Button x:Name="btnNewFile" Content="+ Archivo" Width="80" Height="24" Click="btnNewFile_Click" Margin="0,0,5,0" Style="{StaticResource RoundedButton}" FontSize="11"/>
+                            <Button x:Name="btnNewFolder" Content="+ Carpeta" Width="80" Height="24" Click="btnNewFolder_Click" Margin="0,0,5,0" Style="{StaticResource RoundedButton}" FontSize="11"/>
+                            <Button x:Name="btnDelete" Content="🗑" Width="32" Height="24" Click="btnDelete_Click" Style="{StaticResource SmallRoundDanger}" FontSize="13"/>
                         </StackPanel>
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-                            <TreeView x:Name="tvFiles" Background="Transparent" Foreground="#FFF3DD4E"
-                                      BorderThickness="0"
+
+                        <ScrollViewer Height="180" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                            <TreeView x:Name="tvFiles" Background="Transparent" Foreground="#FFF3DD4E" BorderThickness="0" 
+                                      ItemContainerStyle="{StaticResource FileSystemTreeItem}"
                                       SelectedItemChanged="tvFiles_SelectedItemChanged"
                                       AllowDrop="True"
                                       PreviewMouseLeftButtonDown="tvFiles_PreviewMouseLeftButtonDown"
@@ -146,154 +139,25 @@
                                       PreviewMouseRightButtonDown="tvFiles_PreviewMouseRightButtonDown"
                                       ContextMenuOpening="tvFiles_ContextMenuOpening"/>
                         </ScrollViewer>
-                    </Grid>
 
-                    <Grid x:Name="tabSystem" Grid.Row="1" Visibility="Collapsed">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
 
-                        <Border Grid.Row="0" Background="#252540" Margin="0,0,0,2" Padding="8,4">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Button x:Name="btnSysUp" Content="⬆" Grid.Column="0" Width="26" Height="22"
-                                        Background="#3F4185" Foreground="White" BorderThickness="0"
-                                        Click="btnSysUp_Click" Cursor="Hand" ToolTip="Subir directorio" Margin="0,0,5,0"/>
-                                <TextBox x:Name="txtSysPath" Grid.Column="1" Background="#1A1A2E" Foreground="#87CEEB"
-                                         BorderThickness="1" BorderBrush="#3F4185" Padding="4,2"
-                                         FontFamily="Consolas" FontSize="11" VerticalContentAlignment="Center"
-                                         KeyDown="txtSysPath_KeyDown"/>
-                                <Button x:Name="btnSysGo" Content="→" Grid.Column="2" Width="26" Height="22"
-                                        Background="#3F4185" Foreground="White" BorderThickness="0"
-                                        Click="btnSysGo_Click" Cursor="Hand" Margin="5,0,0,0"/>
-                            </Grid>
-                        </Border>
-
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="8,2,8,4">
-                            <TextBlock Text="Filtro: " Foreground="#AAAAAA" VerticalAlignment="Center" FontSize="11"/>
-                            <ComboBox x:Name="cmbSysFilter" Width="90" Height="22" FontSize="11"
-                                      SelectionChanged="cmbSysFilter_SelectionChanged">
-                                <ComboBoxItem Content="*.py" IsSelected="True"/>
-                                <ComboBoxItem Content="Todos"/>
-                            </ComboBox>
-                            <Button x:Name="btnSysRefresh" Content="↺" Width="26" Height="22"
-                                    Background="#3A3A5C" Foreground="White" BorderThickness="0"
-                                    Click="btnSysRefresh_Click" Cursor="Hand" Margin="6,0,0,0" ToolTip="Actualizar"/>
-                            <Button x:Name="btnOpenInProject" Content="📥 Al proyecto" Height="22" Padding="6,0"
-                                    Background="#2E6B3E" Foreground="White" BorderThickness="0"
-                                    Click="btnOpenInProject_Click" Cursor="Hand" Margin="6,0,0,0" FontSize="11"
-                                    ToolTip="Copia el archivo seleccionado al proyecto actual"/>
-                        </StackPanel>
-
-                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-                            <TreeView x:Name="tvSystem" Background="Transparent" BorderThickness="0"
-                                      ItemContainerStyle="{StaticResource FileSystemTreeItem}"
-                                      SelectedItemChanged="tvSystem_SelectedItemChanged"
-                                      MouseDoubleClick="tvSystem_MouseDoubleClick"
-                                      />
-                        </ScrollViewer>
-                    </Grid>
-
-                    <Grid x:Name="tabTasks" Grid.Row="1" Visibility="Collapsed">
-                        <Border x:Name="homeWorklist" Background="White" CornerRadius="12" Margin="8" MaxHeight="500">
-                            <Border.Effect>
-                                <DropShadowEffect BlurRadius="25" Direction="270" ShadowDepth="4" Opacity="0.2"/>
-                            </Border.Effect>
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" CanContentScroll="True" Margin="10">
-                                <ItemsControl x:Name="icTareas">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Margin="6,5,6,5" Background="WhiteSmoke" BorderBrush="#ECECFF" BorderThickness="1" CornerRadius="10">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <StackPanel Margin="14,12">
-                                                        <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="Bold" Foreground="#3F4185"/>
-                                                        <TextBlock Text="{Binding Deadline}" FontSize="12" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                    </StackPanel>
-                                                    <Button Grid.Column="1" Content="Ver" Background="#5B5EC7" Foreground="White"
-                                                            Width="60" Height="34" Margin="12" FontWeight="Bold"
-                                                            BorderThickness="0" Cursor="Hand"
-                                                            Click="BtnVerEnunciado_Click" Tag="{Binding}">
-                                                        <Button.Resources>
-                                                            <Style TargetType="{x:Type Border}">
-                                                                <Setter Property="CornerRadius" Value="8"/>
-                                                            </Style>
-                                                        </Button.Resources>
-                                                    </Button>
-                                                </Grid>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </Border>
-
-                        <Border x:Name="pnlEnunciado" Background="#1E1E2E" CornerRadius="12" Margin="8" Padding="14" Visibility="Collapsed">
-                            <StackPanel>
-                                <DockPanel Margin="0,0,0,6">
-                                    <TextBlock Text="Enunciado" FontWeight="Bold" FontSize="14" Foreground="#A0A3FF"
-                                               DockPanel.Dock="Left" VerticalAlignment="Center"/>
-                                    <Button x:Name="btnCerrarEnunciado" Content="✕" DockPanel.Dock="Right"
-                                            HorizontalAlignment="Right" Width="24" Height="24"
-                                            Background="Transparent" Foreground="#A0A3FF" BorderThickness="0"
-                                            Cursor="Hand" Click="BtnCerrarEnunciado_Click"/>
-                                </DockPanel>
-                                <TextBlock x:Name="lblEnunciadoTitulo" FontSize="13" FontWeight="Bold"
-                                           Foreground="White" TextWrapping="Wrap" Margin="0,0,0,4"/>
-                                <TextBlock x:Name="lblEnunciadoDeadline" FontSize="11" Foreground="#FF9A9A" Margin="0,0,0,6"/>
-                                <ScrollViewer Height="250" VerticalScrollBarVisibility="Auto">
-                                    <TextBlock x:Name="lblEnunciadoDescripcion" FontSize="12" Foreground="#CCCCCC"
-                                               TextWrapping="Wrap" LineHeight="20"/>
-                                </ScrollViewer>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
+                    </StackPanel>
                 </Grid>
             </Border>
 
-            <GridSplitter x:Name="filesSplitter" Grid.Row="0" Grid.Column="2" Width="5"
-                          HorizontalAlignment="Center"
-                          Background="Transparent" ShowsPreview="True"
-                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"/>
+            <GridSplitter x:Name="filesSplitter" Grid.Row="0" Grid.Column="2" Width="5" HorizontalAlignment="Center" Background="Transparent" ShowsPreview="True" ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"/>
 
-            <TextBox Grid.Row="0" Grid.Column="3" x:Name="txtLineNumbers"
-                     Background="#FF3C3C3C" Foreground="White" BorderThickness="0"
-                     IsReadOnly="True" TextAlignment="Center" FontFamily="Consolas" FontSize="14"
-                     Padding="0,10,0,0" VerticalScrollBarVisibility="Hidden"/>
+            <TextBox Grid.Row="0" Grid.Column="3" x:Name="txtLineNumbers" Background="#FF3C3C3C" Foreground="White" BorderThickness="0" IsReadOnly="True" TextAlignment="Center" FontFamily="Consolas" FontSize="14" Padding="0,10,0,0" VerticalScrollBarVisibility="Hidden"/>
 
-            <TextBox Grid.Row="0" Grid.Column="4" x:Name="txtEditor"
-                     Background="#FF1E1E2E" Foreground="#D4D4D4" BorderThickness="0"
-                     AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas" FontSize="14"
-                     Padding="10,10,0,0" VerticalScrollBarVisibility="Auto"
-                     Text="Write your code here..." GotFocus="txtEditor_Click"
-                     DataObject.Pasting="txtEditor_Pasting" DataObject.Copying="txtEditor_Copying"
-                     TextChanged="txtEditor_TextChanged"/>
+            <TextBox Grid.Row="0" Grid.Column="4" x:Name="txtEditor" Background="#FF8E8E8E" Foreground="White" BorderThickness="0" AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas" FontSize="14" Padding="10,10,0,0" VerticalScrollBarVisibility="Auto" Text="Write your code here..." GotFocus="txtEditor_Click" DataObject.Pasting="txtEditor_Pasting" DataObject.Copying="txtEditor_Copying" TextChanged="txtEditor_TextChanged"/>
 
-            <GridSplitter x:Name="txtConsoleSeparator" Grid.Row="1" Grid.ColumnSpan="5" Height="5"
-                          HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="Black"/>
+            <GridSplitter x:Name="txtConsoleSeparator" Grid.Row="1" Grid.ColumnSpan="5" Height="5" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="Black"/>
 
-            <TextBox Grid.Row="2" Grid.ColumnSpan="5" x:Name="txtConsole"
-                     Background="Black" FontFamily="Consolas" FontSize="12"
-                     IsReadOnly="True" IsReadOnlyCaretVisible="True"
-                     AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
-                     Padding="10" Height="120" MinHeight="120" Focusable="False"/>
+            <TextBox Grid.Row="2" Grid.ColumnSpan="5" x:Name="txtConsole" Background="Black" FontFamily="Consolas" FontSize="12" IsReadOnly="True" IsReadOnlyCaretVisible="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Padding="10" Height="120" MinHeight="120" Focusable="False" />
 
-            <StackPanel Grid.Row="3" Grid.ColumnSpan="5" Orientation="Horizontal"
-                        Margin="0,4,0,-4" Visibility="Collapsed" x:Name="spConsoleInput">
-                <TextBox x:Name="txtConsoleInput" Width="1450" Height="28" FontFamily="Consolas"
-                         FontSize="12" VerticalContentAlignment="Center"
-                         KeyDown="txtConsoleInput_KeyDown" AcceptsTab="True"/>
-                <Button x:Name="btnConsoleSend" Content="Enviar" Width="80" Height="28"
-                        Margin="8,0,0,0" Click="btnConsoleSend_Click"/>
+            <StackPanel Grid.Row="3" Grid.ColumnSpan="5" Orientation="Horizontal" Margin="0,4,0,-4" Visibility="Collapsed" x:Name="spConsoleInput">
+                <TextBox x:Name="txtConsoleInput" Width="1450" Height="28" FontFamily="Consolas" FontSize="12" VerticalContentAlignment="Center" KeyDown="txtConsoleInput_KeyDown" AcceptsTab="True"/>
+                <Button x:Name="btnConsoleSend" Content="Enviar" Width="80" Height="28" Margin="8,0,0,0" Click="btnConsoleSend_Click"/>
             </StackPanel>
         </Grid>
     </Grid>
