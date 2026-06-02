@@ -638,7 +638,7 @@ namespace IDE_Decorator
                 }
                 foreach (var file in Directory.GetFiles(folder, "*.py"))
                 {
-                    var fileNode = new TreeViewItem { Header = "🐍 " + Path.GetFileName(file), Tag = file, Foreground = new SolidColorBrush(Color.FromRgb(243, 221, 78)) };
+                    var fileNode = new TreeViewItem { Header = (Path.GetFileName(file).Contains("🐍 ")? "": "🐍 ") + Path.GetFileName(file), Tag = file, Foreground = new SolidColorBrush(Color.FromRgb(243, 221, 78)) };
                     parent.Items.Add(fileNode);
                 }
             }
