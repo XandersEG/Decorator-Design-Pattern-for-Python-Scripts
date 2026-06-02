@@ -55,6 +55,8 @@
             <Button x:Name="btnRun" Content="▶" Width="25" Height="25" Background="#FF7CFF8D" Margin="10,0,10,0" Click="btnRun_Click" ToolTip="Run (F5 or CTRL+R)"/>
             <Button x:Name="btnStop" Content="⯃" Width="25" Height="25" Background="#FFE36565" Margin="0,0,10,0" Click="btnStop_Click"/>
             <Button x:Name="btnTerminal" Content=">_" Width="25" Height="25" Background="#FF201D1D" Margin="0,0,10,0" Click="btnTerminal_Click" Foreground="White"/>
+            <Button x:Name="btnHighlightSyntax" Content="✎_" Width="25" Height="25" Background="#FF292626" Margin="0,0,10,0" Click="btnTerminal_Click" Foreground="#FFDDC378" BorderBrush="#FFDCAF70" FontSize="14"/>
+            <Button x:Name="btnSignScript" Content="✒️" Width="25" Height="25" Background="#FF201D1D" Margin="0,0,10,0" Click="btnTerminal_Click" Foreground="#FF37A1B9" BorderBrush="#FF37A1B9"/>
             <Label x:Name="lblProjectName" Foreground="White" FontSize="14" VerticalAlignment="Center" Width="1100"/>
 
             <Grid Width="296" Margin="0,0,0,0" RenderTransformOrigin="0.811,0.526">
@@ -92,7 +94,7 @@
                     </StackPanel>
 
                     <ScrollViewer Height="100" VerticalScrollBarVisibility="Auto" CanContentScroll="True">
-                        <TreeView x:Name="tvFiles" Foreground="White" BorderThickness="0" SelectedItemChanged="tvFiles_SelectedItemChanged" BorderBrush="#FF0B57E0"
+                        <TreeView x:Name="tvFiles" Foreground="#FFF3DD4E" BorderThickness="0" SelectedItemChanged="tvFiles_SelectedItemChanged"
                                   AllowDrop="True"
                                   PreviewMouseLeftButtonDown="tvFiles_PreviewMouseLeftButtonDown"
                                   MouseMove="tvFiles_MouseMove"

@@ -2,13 +2,13 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
-using IDEPython.Modelo;
+
 
 namespace IDEPython
 {
     public static class Utils
     {
-        public static string GetUserProjectsRoot(User user)
+        /*public static string GetUserProjectsRoot(User user)
         {
             if (user == null) throw new ArgumentNullException(nameof(user));
             string key = user.Email ?? (user.FirstName + user.LastName1 + user.LastName2);
@@ -16,7 +16,7 @@ namespace IDEPython
             var projectsRoot = Path.Combine(AppContext.BaseDirectory, "Projects", hash);
             Directory.CreateDirectory(projectsRoot);
             return projectsRoot;
-        }
+        }*/
 
         private static string ComputeSha256Hex(string input)
         {
