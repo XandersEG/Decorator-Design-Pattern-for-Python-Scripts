@@ -406,6 +406,8 @@ namespace IDE_Decorator
             var formatted = new ScriptFormatted(script);
 
             SetEditorText(formatted.GetContent());
+            // Apply syntax highlighting
+            IDE_Decorator.Modelo.ScriptFormatted.HighlightPython(txtEditor);
             ActualizarNumerosLinea();
             AppendToConsole("✔ Script formateado.", Brushes.LightGreen);
         }
@@ -800,10 +802,13 @@ namespace IDE_Decorator
                     string toWrite = "#" + newHash + Environment.NewLine + contenidoParaFirmar;
                     File.WriteAllText(currentFilePath, toWrite, Encoding.UTF8);
 
-                    else
+                    try
                     {
-                        File.WriteAllText(currentFilePath, txtEditor.Text);
+                        var script = new IDE_Decorator.Modelo.Script(contenidoParaFirmar, Path.GetFileName(currentFilePath));
+                        var signed = new IDE_Decorator.Modelo.ScriptSigned(script);
+                        signed.RegistrarEnCsv(Path.GetFileName(currentFilePath));
                     }
+                    catch { }
 
                     if (string.IsNullOrEmpty(currentProjectPath))
                         currentProjectPath = Path.GetDirectoryName(currentFilePath);
