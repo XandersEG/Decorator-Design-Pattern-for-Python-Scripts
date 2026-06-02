@@ -55,7 +55,9 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Modelo\IScript.cs" />
     <Compile Include="Modelo\Script.cs" />
+    <Compile Include="Modelo\ScriptDecorator.cs" />
     <Compile Include="Modelo\ScriptFormatted.cs" />
     <Compile Include="Modelo\ScriptSigned.cs" />
     <Compile Include="Utils.cs" />
