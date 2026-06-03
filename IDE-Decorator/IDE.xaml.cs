@@ -24,6 +24,7 @@ namespace IDE_Decorator
         private string projectName;
         private string currentProjectPath;
         private string currentFilePath;
+        private string _contenidoOriginal = string.Empty; 
 
         private string sysCurrentPath;
         private bool sysFilterPyOnly = true;
@@ -65,7 +66,7 @@ namespace IDE_Decorator
             if (string.IsNullOrEmpty(sysCurrentPath) || !Directory.Exists(sysCurrentPath))
                 sysCurrentPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             LoadSystemTree(sysCurrentPath);
-            
+
         }
 
         private string GetEditorText()
@@ -85,7 +86,8 @@ namespace IDE_Decorator
         {
             var text = GetEditorText();
             if (string.IsNullOrEmpty(text)) return 1;
-            return text.Split(new[] { '\n' }, StringSplitOptions.None).Length;
+            // TrimEnd para evitar la línea extra que agrega el RichTextBox al final
+            return text.TrimEnd().Split(new[] { '\n' }, StringSplitOptions.None).Length;
         }
 
         private void btnTabProject_Click(object sender, RoutedEventArgs e) => SwitchTab(ActiveTab.Project);
@@ -323,17 +325,21 @@ namespace IDE_Decorator
             {
                 currentFilePath = path;
                 string contenidoDisco = File.ReadAllText(path, Encoding.UTF8);
+                string contenidoParaEditor;
 
                 if (IDE_Decorator.Modelo.ScriptSigned.IsAlreadySigned(contenidoDisco))
                 {
                     string[] lineas = contenidoDisco.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-                    string contenidoLimpioParaUsuario = string.Join(Environment.NewLine, lineas.Skip(1));
-                    SetEditorText(contenidoLimpioParaUsuario);
+                    contenidoParaEditor = string.Join(Environment.NewLine, lineas.Skip(1));
                 }
                 else
                 {
-                    SetEditorText(contenidoDisco);
+                    contenidoParaEditor = contenidoDisco;
                 }
+
+                SetEditorText(contenidoParaEditor);
+                // Guardar el contenido original para detectar modificaciones reales
+                _contenidoOriginal = GetEditorText().TrimEnd();
 
                 ActualizarNumerosLinea();
                 lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(path)}";
@@ -361,42 +367,87 @@ namespace IDE_Decorator
                 return;
             }
 
+            string nombreArchivo = Path.GetFileName(currentFilePath);
             string contenidoActualEnDisco = File.ReadAllText(currentFilePath, Encoding.UTF8);
+
+            // Si ya está firmado, regenerar
             if (IDE_Decorator.Modelo.ScriptSigned.IsAlreadySigned(contenidoActualEnDisco))
             {
-                MessageBox.Show("El script ya se encuentra firmado electrónicamente.\nNo se permite acumular múltiples firmas sobre el mismo archivo.", "Firma Denegada", MessageBoxButton.OK, MessageBoxImage.Error);
+                var confirm = MessageBox.Show("El script ya tiene una firma. ¿Desea regenerarla?", "Regenerar Firma", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (confirm != MessageBoxResult.Yes) return;
+
+                IScript scriptOriginal = new Script(contenidoEditor, nombreArchivo);
+                ScriptSigned scriptFirmado = new ScriptSigned(scriptOriginal);
+
+                try
+                {
+                    File.WriteAllText(currentFilePath, scriptFirmado.GetContent(), Encoding.UTF8);
+                    scriptFirmado.RegenerarFirma(nombreArchivo);
+
+                    _contenidoOriginal = GetEditorText().TrimEnd();
+                    isModified = false;
+                    lblProjectName.Content = $"{this.projectName} - {nombreArchivo}";
+                    LoadProject(currentProjectPath);
+
+                    MessageBox.Show($"Firma regenerada con éxito para '{nombreArchivo}'.", "Firma Regenerada", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error al regenerar la firma: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
                 return;
             }
 
-            string nombreArchivo = Path.GetFileName(currentFilePath);
-
-            IScript scriptOriginal = new Script(contenidoEditor, nombreArchivo);
-            ScriptSigned scriptFirmado = new ScriptSigned(scriptOriginal);
+            // Si no está firmado, firmar por primera vez
+            IScript scriptBase = new Script(contenidoEditor, nombreArchivo);
+            ScriptSigned scriptNuevo = new ScriptSigned(scriptBase);
 
             try
             {
-                File.WriteAllText(currentFilePath, scriptFirmado.GetContent(), Encoding.UTF8);
+                File.WriteAllText(currentFilePath, scriptNuevo.GetContent(), Encoding.UTF8);
+                scriptNuevo.RegistrarEnCsv(nombreArchivo);
 
-                scriptFirmado.RegistrarEnCsv(nombreArchivo);
-
+                _contenidoOriginal = GetEditorText().TrimEnd();
                 isModified = false;
                 lblProjectName.Content = $"{this.projectName} - {nombreArchivo}";
-
                 LoadProject(currentProjectPath);
 
-
-                MessageBox.Show($"¡Archivo '{nombreArchivo}' firmado con éxito!\nFirma guardada de manera directa en el archivo original y registrada en firmas.csv.", "Proceso Exitoso", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"¡Archivo '{nombreArchivo}' firmado con éxito!", "Proceso Exitoso", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ocurrió un error al persistir la firma del script: {ex.Message}", "Error de Persistencia", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Error al firmar el script: {ex.Message}", "Error de Persistencia", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
+        private void btnVerificarFirma_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(currentFilePath) || !File.Exists(currentFilePath))
+            {
+                MessageBox.Show("No hay ningún archivo abierto para verificar.", "Archivo Requerido", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            string contenidoDisco = File.ReadAllText(currentFilePath, Encoding.UTF8);
+
+            if (!IDE_Decorator.Modelo.ScriptSigned.IsAlreadySigned(contenidoDisco))
+            {
+                MessageBox.Show("Este script no tiene firma digital.", "Sin Firma", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            bool valida = IDE_Decorator.Modelo.ScriptSigned.VerificarFirma(contenidoDisco);
+            if (valida)
+                MessageBox.Show("✔ La firma es válida. El script no ha sido modificado.", "Firma Válida", MessageBoxButton.OK, MessageBoxImage.Information);
+            else
+                MessageBox.Show("✘ La firma no coincide. El script fue modificado externamente.", "Firma Inválida", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
         private void btnHighlightSyntax_Click(object sender, RoutedEventArgs e)
         {
             string content = GetEditorText();
             string fileName = string.IsNullOrEmpty(currentFilePath) ? "script.py" : Path.GetFileName(currentFilePath);
-            
+
             if (string.IsNullOrWhiteSpace(content) || content == "Puedes escribir código de prueba aquí...")
             {
                 MessageBox.Show("El editor está vacío. No hay contenido para formatear.", "Operación Inválida", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -633,6 +684,7 @@ namespace IDE_Decorator
                 lblProjectName.Content = this.projectName;
                 RefreshTreeView();
                 currentFilePath = null;
+                _contenidoOriginal = string.Empty;
                 SetEditorText("Puedes escribir código de prueba aquí...");
                 txtLineNumbers.Text = "1";
             }
@@ -646,19 +698,22 @@ namespace IDE_Decorator
                 try
                 {
                     currentFilePath = path;
-
                     string contenidoDisco = File.ReadAllText(path, Encoding.UTF8);
+                    string contenidoParaEditor;
 
                     if (IDE_Decorator.Modelo.ScriptSigned.IsAlreadySigned(contenidoDisco))
                     {
                         string[] lineas = contenidoDisco.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-                        string contenidoLimpioParaUsuario = string.Join(Environment.NewLine, lineas.Skip(1));
-                        SetEditorText(contenidoLimpioParaUsuario);
+                        contenidoParaEditor = string.Join(Environment.NewLine, lineas.Skip(1));
                     }
                     else
                     {
-                        SetEditorText(contenidoDisco);
+                        contenidoParaEditor = contenidoDisco;
                     }
+
+                    SetEditorText(contenidoParaEditor);
+                    // Guardar el contenido original para detectar modificaciones reales
+                    _contenidoOriginal = GetEditorText().TrimEnd();
 
                     ActualizarNumerosLinea();
                     lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(path)}";
@@ -670,6 +725,7 @@ namespace IDE_Decorator
                 }
             }
         }
+
         private void BuildTree(TreeViewItem parent, string folder)
         {
             try
@@ -682,12 +738,13 @@ namespace IDE_Decorator
                 }
                 foreach (var file in Directory.GetFiles(folder, "*.py"))
                 {
-                    var fileNode = new TreeViewItem { Header = (Path.GetFileName(file).Contains("🐍 ")? "": "🐍 ") + Path.GetFileName(file), Tag = file, Foreground = new SolidColorBrush(Color.FromRgb(243, 221, 78)) };
+                    var fileNode = new TreeViewItem { Header = (Path.GetFileName(file).Contains("🐍 ") ? "" : "🐍 ") + Path.GetFileName(file), Tag = file, Foreground = new SolidColorBrush(Color.FromRgb(243, 221, 78)) };
                     parent.Items.Add(fileNode);
                 }
             }
             catch { }
         }
+
         private Point _startPoint;
 
         private void tvFiles_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -817,10 +874,7 @@ namespace IDE_Decorator
             {
                 if (!string.IsNullOrEmpty(currentFilePath))
                 {
-                    string contenidoActualEnDisco = File.Exists(currentFilePath) ? File.ReadAllText(currentFilePath, Encoding.UTF8) : "";
-
-                    // Always sign on save
-                    string contenidoParaFirmar = GetEditorText();
+                    string contenidoParaFirmar = GetEditorText().TrimEnd();
                     string newHash = IDE_Decorator.Modelo.ScriptSigned.ComputeSha256(contenidoParaFirmar);
                     string toWrite = "#" + newHash + Environment.NewLine + contenidoParaFirmar;
                     File.WriteAllText(currentFilePath, toWrite, Encoding.UTF8);
@@ -836,12 +890,12 @@ namespace IDE_Decorator
                     if (string.IsNullOrEmpty(currentProjectPath))
                         currentProjectPath = Path.GetDirectoryName(currentFilePath);
 
+                    // Actualizar el contenido original tras guardar
+                    _contenidoOriginal = GetEditorText().TrimEnd();
+
                     lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(currentFilePath)}";
                     SetSelectedNodeItalic(false);
                     isModified = false;
-                }
-                else if (!string.IsNullOrEmpty(currentProjectPath))
-                {
                 }
             }
             catch (Exception ex)
@@ -1058,16 +1112,14 @@ namespace IDE_Decorator
         private void txtEditor_TextChanged(object sender, TextChangedEventArgs e)
         {
             ActualizarNumerosLinea();
-            isModified = GetEditorText() != "Puedes escribir código de prueba aquí...";
+            // Comparar contra el contenido original guardado al cargar el archivo
+            isModified = GetEditorText().TrimEnd() != _contenidoOriginal;
             if (txtEditor.IsFocused && !string.IsNullOrEmpty(currentFilePath) && isModified)
             {
                 lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(currentFilePath)} - Cambios sin guardar*";
                 SetSelectedNodeItalic(true);
             }
         }
-
-
-
 
         private void btnTerminal_Click(object sender, RoutedEventArgs e) => openPythonTerminal();
     }

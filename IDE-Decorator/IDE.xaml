@@ -71,7 +71,8 @@
             <Button x:Name="btnStop" Content="⯃" Width="25" Height="25" Background="#FFE36565" Margin="0,0,10,0" Click="btnStop_Click"/>
             <Button x:Name="btnTerminal" Content=">_" Width="25" Height="25" Background="#FF201D1D" Margin="0,0,10,0" Click="btnTerminal_Click" Foreground="White" ToolTip="Terminal Python (CTRL+T)"/>
             <Button x:Name="btnHighlightSyntax" Content="✎_" Width="25" Height="25" Background="#FF292626" Margin="0,0,10,0" Click="btnHighlightSyntax_Click" Foreground="#FFDDC378" BorderBrush="#FFDCAF70" FontSize="14" ToolTip="Formatear script"/>
-            <Button x:Name="btnSignScript" Content="✒️" Width="30" Height="25" Background="#FF1A2A3A" Margin="0,0,10,0" Click="btnSignScript_Click" Foreground="#FF37A1B9" BorderBrush="#FF37A1B9" ToolTip="Firmar script con SHA-256"/>
+            <Button x:Name="btnSignScript" Content="✒️" Width="30" Height="25" Background="#FF1A2A3A" Margin="0,0,5,0" Click="btnSignScript_Click" Foreground="#FF37A1B9" BorderBrush="#FF37A1B9" ToolTip="Firmar / Regenerar firma SHA-256"/>
+            <Button x:Name="btnVerificarFirma" Content="🔍" Width="30" Height="25" Background="#FF1A2A3A" Margin="0,0,10,0" Click="btnVerificarFirma_Click" Foreground="#FF37A1B9" BorderBrush="#FF37A1B9" ToolTip="Verificar firma del script"/>
             <Label x:Name="lblProjectName" Foreground="White" FontSize="14" VerticalAlignment="Center" Width="1080"/>
 
             <Grid Width="296" Margin="0,0,0,0">
