@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Documents;
+using System.Windows.Markup;
 
 namespace IDE_Decorator
 {
@@ -64,11 +65,6 @@ namespace IDE_Decorator
             if (string.IsNullOrEmpty(sysCurrentPath) || !Directory.Exists(sysCurrentPath))
                 sysCurrentPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             LoadSystemTree(sysCurrentPath);
-
-
-
-            ;
-
             
         }
 
@@ -400,14 +396,41 @@ namespace IDE_Decorator
         {
             string content = GetEditorText();
             string fileName = string.IsNullOrEmpty(currentFilePath) ? "script.py" : Path.GetFileName(currentFilePath);
-            if (string.IsNullOrWhiteSpace(content) || content == "Puedes escribir código de prueba aquí...") return;
+            
+            if (string.IsNullOrWhiteSpace(content) || content == "Puedes escribir código de prueba aquí...")
+            {
+                MessageBox.Show("El editor está vacío. No hay contenido para formatear.", "Operación Inválida", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
             IScript script = new Script(content, fileName);
             var formatted = new ScriptFormatted(script);
 
-            SetEditorText(formatted.GetContent());
-            // Apply syntax highlighting
-            IDE_Decorator.Modelo.ScriptFormatted.HighlightPython(txtEditor);
+            string maybeXaml = formatted.GetContent();
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(maybeXaml) && maybeXaml.TrimStart().StartsWith("<FlowDocument", StringComparison.OrdinalIgnoreCase))
+                {
+                    var doc = System.Windows.Markup.XamlReader.Parse(maybeXaml) as FlowDocument;
+                    if (doc != null)
+                    {
+                        txtEditor.Document = doc;
+                        txtEditor.CaretPosition = txtEditor.Document.ContentEnd;
+                    }
+                    else
+                    {
+                        SetEditorText(content);
+                    }
+                }
+                else
+                {
+                    SetEditorText(maybeXaml);
+                }
+            }
+            catch
+            {
+                SetEditorText(content);
+            }
             ActualizarNumerosLinea();
             AppendToConsole("✔ Script formateado.", Brushes.LightGreen);
         }
@@ -1035,7 +1058,7 @@ namespace IDE_Decorator
         private void txtEditor_TextChanged(object sender, TextChangedEventArgs e)
         {
             ActualizarNumerosLinea();
-            isModified = GetEditorText() != "Puedes escribir código de prueba aquí..";
+            isModified = GetEditorText() != "Puedes escribir código de prueba aquí...";
             if (txtEditor.IsFocused && !string.IsNullOrEmpty(currentFilePath) && isModified)
             {
                 lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(currentFilePath)} - Cambios sin guardar*";
