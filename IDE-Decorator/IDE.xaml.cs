@@ -459,24 +459,43 @@ namespace IDE_Decorator
         {
             if (string.IsNullOrEmpty(currentFilePath) || !File.Exists(currentFilePath))
             {
-                MessageBox.Show("No hay ningún archivo abierto para verificar.", "Archivo Requerido", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("No hay ningún archivo abierto para verificar.", "Archivo Requerido",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             string contenidoDisco = File.ReadAllText(currentFilePath, Encoding.UTF8);
+            string nombreArchivo = Path.GetFileName(currentFilePath);
 
-            if (!IDE_Decorator.Modelo.ScriptSigned.IsAlreadySigned(contenidoDisco))
+            bool tieneFirmaEnArchivo = IDE_Decorator.Modelo.ScriptSigned.IsAlreadySigned(contenidoDisco);
+            string hashEnCsv = IDE_Decorator.Modelo.ScriptSigned.LeerHashDesdeCsv(nombreArchivo);
+
+            // Nunca fue firmado
+            if (!tieneFirmaEnArchivo && string.IsNullOrEmpty(hashEnCsv))
             {
-                MessageBox.Show("Este script no tiene firma digital.", "Sin Firma", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("Este script nunca ha sido firmado.", "Sin Firma",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
+            // La firma del archivo fue eliminada externamente pero el CSV la tiene
+            if (!tieneFirmaEnArchivo && !string.IsNullOrEmpty(hashEnCsv))
+            {
+                MessageBox.Show("✘ El script fue modificado externamente: la línea de firma fue eliminada del archivo.",
+                    "Firma Inválida", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // La firma sigue en el archivo, verificar normalmente
             bool valida = IDE_Decorator.Modelo.ScriptSigned.VerificarFirma(contenidoDisco);
             if (valida)
-                MessageBox.Show("✔ La firma es válida. El script no ha sido modificado externamente desde la última vez que se firmó en este IDE.", "Firma Válida", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("✔ La firma es válida. El script no ha sido modificado externamente.",
+                    "Firma Válida", MessageBoxButton.OK, MessageBoxImage.Information);
             else
-                MessageBox.Show("✘ La firma no coincide. El script fue modificado externamente.", "Firma Inválida", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("✘ La firma no coincide. El script fue modificado externamente.",
+                    "Firma Inválida", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+
 
         private void btnHighlightSyntax_Click(object sender, RoutedEventArgs e)
         {

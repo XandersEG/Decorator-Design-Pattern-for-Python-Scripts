@@ -104,6 +104,18 @@ namespace IDE_Decorator.Modelo
                 return hex.ToString();
             }
         }
+        public static string LeerHashDesdeCsv(string nombreArchivo)
+        {
+            if (!File.Exists(CsvPath)) return null;
+            // El CSV guarda: nombreArchivo,hash,fecha
+            // Si hay múltiples entradas para el mismo archivo, tomamos la última (la más reciente)
+            string ultimaLinea = File.ReadLines(CsvPath)
+                                     .Where(l => l.StartsWith(nombreArchivo + ","))
+                                     .LastOrDefault();
+            if (ultimaLinea == null) return null;
+            var partes = ultimaLinea.Split(',');
+            return partes.Length >= 2 ? partes[1] : null;
+        }
 
         private static string NormalizeToLf(string s)
         {
