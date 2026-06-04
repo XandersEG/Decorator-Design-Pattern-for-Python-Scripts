@@ -76,9 +76,8 @@
             <Label x:Name="lblProjectName" Foreground="White" FontSize="14" VerticalAlignment="Center" Width="1080"/>
 
             <Grid Width="296" Margin="0,0,0,0">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="181,0,0,0" Width="296">
-                    <Button x:Name="btnUploadAssignment" Content="↑" Width="30" Height="25" Background="#5B5EC7" Foreground="White" Margin="0,0,10,0"/>
-                    <Button x:Name="btnReturn" Content="x" Width="30" Height="25" Background="#FFFF1A45" Foreground="White" Margin="0,0,10,0" Click="btnReturn_Cick"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="170,0,0,0" Width="135">
+                    <Button x:Name="btnReturn" Content="x" Width="30" Height="25" Background="#FFFF1A45" Foreground="White" Margin="0,0,10,0" Click="btnReturn_Click"/>
                 </StackPanel>
             </Grid>
         </StackPanel>

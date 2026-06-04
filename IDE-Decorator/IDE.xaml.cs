@@ -25,16 +25,23 @@ namespace IDE_Decorator
         private string currentProjectPath;
         private string currentFilePath;
         private string _contenidoOriginal = string.Empty; 
+        private bool _suspendTextChange = false;
 
         private string sysCurrentPath;
         private bool sysFilterPyOnly = true;
         private string hiddenPersistencePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".local_scripts");
         private enum ActiveTab { Project, System, Tasks }
         private ActiveTab _activeTab = ActiveTab.Project;
+        private static string NormalizeToLf(string s)
+        {
+            if (s == null) return string.Empty;
+            return s.Replace("\r\n", "\n").Replace("\r", "\n");
+        }
 
         public IDE()
         {
             InitializeComponent();
+            _suspendTextChange = true;
             this.running = false;
             this.projectName = "Proyecto Python Autónomo";
 
@@ -58,6 +65,7 @@ namespace IDE_Decorator
                 DirectoryInfo di = Directory.CreateDirectory(hiddenPersistencePath);
                 di.Attributes |= FileAttributes.Hidden;
             }
+
             this.currentProjectPath = hiddenPersistencePath;
             LoadProject(hiddenPersistencePath);
             Console.WriteLine(hiddenPersistencePath);
@@ -77,17 +85,46 @@ namespace IDE_Decorator
 
         private void SetEditorText(string text)
         {
-            txtEditor.Document.Blocks.Clear();
-            txtEditor.Document.Blocks.Add(new Paragraph(new Run(text)));
-            txtEditor.CaretPosition = txtEditor.Document.ContentEnd;
+            _suspendTextChange = true;
+            try
+            {
+                txtEditor.Document.Blocks.Clear();
+                string raw = NormalizeToLf(text ?? string.Empty);
+                var lines = raw.Split(new[] { '\n' }, StringSplitOptions.None);
+                double lineHeight = Math.Max(1.0, txtEditor.FontSize * 1.2);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    var p = new Paragraph(new Run(lines[i]))
+                    {
+                        Margin = new System.Windows.Thickness(0),
+                        Padding = new System.Windows.Thickness(0),
+                        LineHeight = lineHeight,
+                        LineStackingStrategy = LineStackingStrategy.BlockLineHeight
+                    };
+                    txtEditor.Document.Blocks.Add(p);
+                }
+
+                try { txtEditor.Document.PageWidth = 10000; } catch { }
+
+                try
+                {
+                    txtLineNumbers.FontFamily = txtEditor.FontFamily;
+                    txtLineNumbers.FontSize = txtEditor.FontSize;
+                    txtLineNumbers.Padding = new Thickness(0, 6, 0, 0);
+                }
+                catch { }
+
+                txtEditor.CaretPosition = txtEditor.Document.ContentEnd;
+            }
+            finally { _suspendTextChange = false; }
         }
 
         private int GetEditorLineCount()
         {
-            var text = GetEditorText();
-            if (string.IsNullOrEmpty(text)) return 1;
-            // TrimEnd para evitar la línea extra que agrega el RichTextBox al final
-            return text.TrimEnd().Split(new[] { '\n' }, StringSplitOptions.None).Length;
+            var text = NormalizeToLf(GetEditorText());
+            if (text == null) return 1;
+            if (text.Length == 0) return 1;
+            return text.Split(new[] { '\n' }, StringSplitOptions.None).Length;
         }
 
         private void btnTabProject_Click(object sender, RoutedEventArgs e) => SwitchTab(ActiveTab.Project);
@@ -338,8 +375,7 @@ namespace IDE_Decorator
                 }
 
                 SetEditorText(contenidoParaEditor);
-                // Guardar el contenido original para detectar modificaciones reales
-                _contenidoOriginal = GetEditorText().TrimEnd();
+                _contenidoOriginal = NormalizeToLf(GetEditorText()).TrimEnd('\n');
 
                 ActualizarNumerosLinea();
                 lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(path)}";
@@ -361,7 +397,7 @@ namespace IDE_Decorator
             }
 
             string contenidoEditor = GetEditorText();
-            if (string.IsNullOrEmpty(contenidoEditor) || contenidoEditor == "Puedes escribir código de prueba aquí...")
+            if (string.IsNullOrEmpty(contenidoEditor) || contenidoEditor == "Puedes escribir código de prueba aquí...\r\n")
             {
                 MessageBox.Show("El editor está vacío. No hay contenido para firmar.", "Operación Inválida", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
@@ -387,7 +423,6 @@ namespace IDE_Decorator
                     _contenidoOriginal = GetEditorText().TrimEnd();
                     isModified = false;
                     lblProjectName.Content = $"{this.projectName} - {nombreArchivo}";
-                    LoadProject(currentProjectPath);
 
                     MessageBox.Show($"Firma regenerada con éxito para '{nombreArchivo}'.", "Firma Regenerada", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
@@ -407,7 +442,7 @@ namespace IDE_Decorator
                 File.WriteAllText(currentFilePath, scriptNuevo.GetContent(), Encoding.UTF8);
                 scriptNuevo.RegistrarEnCsv(nombreArchivo);
 
-                _contenidoOriginal = GetEditorText().TrimEnd();
+                _contenidoOriginal = NormalizeToLf(GetEditorText()).TrimEnd('\n');
                 isModified = false;
                 lblProjectName.Content = $"{this.projectName} - {nombreArchivo}";
                 LoadProject(currentProjectPath);
@@ -438,7 +473,7 @@ namespace IDE_Decorator
 
             bool valida = IDE_Decorator.Modelo.ScriptSigned.VerificarFirma(contenidoDisco);
             if (valida)
-                MessageBox.Show("✔ La firma es válida. El script no ha sido modificado.", "Firma Válida", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("✔ La firma es válida. El script no ha sido modificado externamente desde la última vez que se firmó en este IDE.", "Firma Válida", MessageBoxButton.OK, MessageBoxImage.Information);
             else
                 MessageBox.Show("✘ La firma no coincide. El script fue modificado externamente.", "Firma Inválida", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
@@ -448,7 +483,7 @@ namespace IDE_Decorator
             string content = GetEditorText();
             string fileName = string.IsNullOrEmpty(currentFilePath) ? "script.py" : Path.GetFileName(currentFilePath);
 
-            if (string.IsNullOrWhiteSpace(content) || content == "Puedes escribir código de prueba aquí...")
+            if (string.IsNullOrWhiteSpace(content) || content == "Puedes escribir código de prueba aquí...\r\n")
             {
                 MessageBox.Show("El editor está vacío. No hay contenido para formatear.", "Operación Inválida", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
@@ -465,6 +500,7 @@ namespace IDE_Decorator
                     var doc = System.Windows.Markup.XamlReader.Parse(maybeXaml) as FlowDocument;
                     if (doc != null)
                     {
+                        try { doc.PageWidth = 10000; } catch { }
                         txtEditor.Document = doc;
                         txtEditor.CaretPosition = txtEditor.Document.ContentEnd;
                     }
@@ -655,7 +691,7 @@ namespace IDE_Decorator
 
         private void txtEditor_Click(object sender, RoutedEventArgs e)
         {
-            if (GetEditorText() == "Puedes escribir código de prueba aquí...")
+            if (GetEditorText() == "Puedes escribir código de prueba aquí...\r\n")
                 SetEditorText("");
             e.Handled = true;
         }
@@ -684,8 +720,8 @@ namespace IDE_Decorator
                 lblProjectName.Content = this.projectName;
                 RefreshTreeView();
                 currentFilePath = null;
-                _contenidoOriginal = string.Empty;
                 SetEditorText("Puedes escribir código de prueba aquí...");
+                _contenidoOriginal = NormalizeToLf(GetEditorText()).TrimEnd('\n');
                 txtLineNumbers.Text = "1";
             }
             catch (Exception ex) { MessageBox.Show("Error loading project: " + ex.Message); }
@@ -712,8 +748,7 @@ namespace IDE_Decorator
                     }
 
                     SetEditorText(contenidoParaEditor);
-                    // Guardar el contenido original para detectar modificaciones reales
-                    _contenidoOriginal = GetEditorText().TrimEnd();
+                _contenidoOriginal = NormalizeToLf(GetEditorText()).TrimEnd('\n');
 
                     ActualizarNumerosLinea();
                     lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(path)}";
@@ -874,9 +909,9 @@ namespace IDE_Decorator
             {
                 if (!string.IsNullOrEmpty(currentFilePath))
                 {
-                    string contenidoParaFirmar = GetEditorText().TrimEnd();
+                    string contenidoParaFirmar = NormalizeToLf(GetEditorText()).TrimEnd('\n');
                     string newHash = IDE_Decorator.Modelo.ScriptSigned.ComputeSha256(contenidoParaFirmar);
-                    string toWrite = "#" + newHash + Environment.NewLine + contenidoParaFirmar;
+                    string toWrite = "#" + newHash + "\r\n" + contenidoParaFirmar.Replace("\n", "\r\n");
                     File.WriteAllText(currentFilePath, toWrite, Encoding.UTF8);
 
                     try
@@ -895,6 +930,28 @@ namespace IDE_Decorator
 
                     lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(currentFilePath)}";
                     SetSelectedNodeItalic(false);
+                    isModified = false;
+                }
+                else if (!string.IsNullOrEmpty(currentProjectPath))
+                {
+                    int i = 1;
+                    string newPath;
+                    do
+                    {
+                        newPath = Path.Combine(currentProjectPath, $"untitled_{i}.py");
+                        i++;
+                    } while (File.Exists(newPath));
+
+                    string contenidoParaFirmar = NormalizeToLf(GetEditorText()).TrimEnd('\n');
+                    string newHash = IDE_Decorator.Modelo.ScriptSigned.ComputeSha256(contenidoParaFirmar);
+                    string toWrite = "#" + newHash + "\r\n" + contenidoParaFirmar.Replace("\n", "\r\n");
+                    File.WriteAllText(newPath, toWrite, Encoding.UTF8);
+
+                    currentFilePath = newPath;
+                    LoadProject(currentProjectPath);
+
+                    _contenidoOriginal = NormalizeToLf(GetEditorText()).TrimEnd('\n');
+                    lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(currentFilePath)}";
                     isModified = false;
                 }
             }
@@ -1056,7 +1113,7 @@ namespace IDE_Decorator
             else if ((Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.R) || e.Key == Key.F5)
             { e.Handled = true; btnRun_Click(sender, e); }
             else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Q)
-            { e.Handled = true; btnReturn_Cick(sender, e); }
+            { e.Handled = true; btnReturn_Click(sender, e); }
             else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.T)
             { e.Handled = true; openPythonTerminal(); }
         }
@@ -1068,13 +1125,23 @@ namespace IDE_Decorator
 
         private void ActualizarNumerosLinea()
         {
-            int count = GetEditorLineCount();
+            int count = 1;
+            try
+            {
+                count = txtEditor.Document?.Blocks?.OfType<System.Windows.Documents.Paragraph>()?.Count() ?? GetEditorLineCount();
+                if (count <= 0) count = 1;
+            }
+            catch { count = GetEditorLineCount(); }
+
             var sb = new StringBuilder();
             for (int i = 1; i <= count; i++) sb.AppendLine(i.ToString());
             txtLineNumbers.Text = sb.ToString();
+            
+            txtLineNumbers.Padding = new Thickness(0, 6, 0, 0);
+            txtLineNumbers.VerticalContentAlignment = VerticalAlignment.Top;
         }
 
-        private void btnReturn_Cick(object sender, RoutedEventArgs e)
+        private void btnReturn_Click(object sender, RoutedEventArgs e)
         {
             if (isModified)
             {
@@ -1111,9 +1178,11 @@ namespace IDE_Decorator
 
         private void txtEditor_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (_suspendTextChange) return;
             ActualizarNumerosLinea();
-            // Comparar contra el contenido original guardado al cargar el archivo
-            isModified = GetEditorText().TrimEnd() != _contenidoOriginal;
+            // Comparar contra el contenido original guardado al cargar el archivo (normalizando saltos de línea)
+            string currentNorm = NormalizeToLf(GetEditorText()).TrimEnd('\n');
+            isModified = currentNorm != _contenidoOriginal;
             if (txtEditor.IsFocused && !string.IsNullOrEmpty(currentFilePath) && isModified)
             {
                 lblProjectName.Content = $"{this.projectName} - {Path.GetFileName(currentFilePath)} - Cambios sin guardar*";

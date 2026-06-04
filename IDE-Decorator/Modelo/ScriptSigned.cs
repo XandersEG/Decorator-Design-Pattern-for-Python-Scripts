@@ -13,14 +13,15 @@ namespace IDE_Decorator.Modelo
 
         public ScriptSigned(IScript inner) : base(inner)
         {
-            _hash = ComputeSha256(inner.GetContent().TrimEnd());
+            _hash = ComputeSha256(NormalizeToLf(inner.GetContent()).TrimEnd('\n'));
         }
 
         public override string GetContent()
         {
             var sb = new StringBuilder();
             sb.AppendLine("#" + _hash);
-            sb.Append(_inner.GetContent().TrimEnd());
+            var body = NormalizeToLf(_inner.GetContent()).TrimEnd('\n').Replace("\n", "\r\n");
+            sb.Append(body);
             return sb.ToString();
         }
 
@@ -85,7 +86,8 @@ namespace IDE_Decorator.Modelo
             if (firstLine.StartsWith("#")) firstLine = firstLine.Substring(1);
 
 
-            string contenido = string.Join("\n", lines.Skip(1)).TrimEnd();
+            string contenido = string.Join("\n", lines.Skip(1));
+            contenido = NormalizeToLf(contenido).TrimEnd('\n');
             return string.Equals(firstLine, ComputeSha256(contenido), StringComparison.OrdinalIgnoreCase);
         }
 
@@ -101,6 +103,25 @@ namespace IDE_Decorator.Modelo
                     hex.AppendFormat("{0:x2}", b);
                 return hex.ToString();
             }
+        }
+
+        private static string NormalizeToLf(string s)
+        {
+            if (s == null) return string.Empty;
+            if (s.TrimStart().StartsWith("<FlowDocument", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var doc = System.Windows.Markup.XamlReader.Parse(s) as System.Windows.Documents.FlowDocument;
+                    if (doc != null)
+                    {
+                        var tr = new System.Windows.Documents.TextRange(doc.ContentStart, doc.ContentEnd);
+                        return tr.Text.Replace("\r\n", "\n").Replace("\r", "\n");
+                    }
+                }
+                catch { }
+            }
+            return s.Replace("\r\n", "\n").Replace("\r", "\n");
         }
     }
 }
